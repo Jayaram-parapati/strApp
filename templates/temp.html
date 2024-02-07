@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- popup -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+
+  <!-- Include Bootstrap CSS and JavaScript -->
+  <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+  <!-- <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script> -->
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+  <!-- Include Moment.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+</head>
+
+<body>
+ 
+  <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModalCenter">
+    select
+
+  </button>
+  
+  <!-- Modal -->
+  <div class="modal fade" id="exampleModalCenter" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="exampleModalLongTitle">Settings</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="range-wrapper" style="padding: 25px">
+          <div class="dropdown-wrapper">
+            <div class="ViewTransactions">
+              <label for="View_Transactions">View Transactions: <em style="color: red">*</em></label>
+              <select name="ViewTransactions" id="view_transaction">
+                <option selected>-select-</option>
+                
+              </select>
+            </div>
+            <div class="FromRange ">
+              <label for="From_range">From : <em style="color: red">*</em></label>
+              <!-- <select name="FromRange" id="FromRange_label"> -->
+                <!-- <option selected>-select-</option> -->
+                <input type="text" id="datepickerTo">
+              </select>
+            </div>
+            <div class="ToRange">
+              <label for="to_range">To : <em style="color: red">*</em></label>
+              <!-- <select name="ToRange" id="ToRange_label"> -->
+                <!-- <option selected>-select-</option> -->
+                <input type="text" id="datepickerFrom">
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="getDateButton" data-dismiss="modal">OK</button>
+          <button type="button" class="btn btn-primary" data-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+
+  <script>
+function populateRangeVT() {
+  // Get the dropdown element
+  const select = document.getElementById("view_transaction");
+
+  // Define the ranges and populate the dropdown options
+  const ranges = [
+    { label: "-select-", value: "" },
+    { label: "Today", value: "today" },
+    { label: "Yesterday", value: "yesterday" },
+    { label: "This Week", value: "thisweek" },
+    { label: "This Week-to-Date", value: "thisweek-to-date" },
+    { label: "Last Week", value: "lastweek" },
+    { label: "Last Week-to-Date", value: "lastweek-to-date" },
+    { label: "This Month", value: "thismonth" },
+    { label: "This Month-to-Date", value: "thismonth-to-date" },
+    { label: "Last Month", value: "lastmonth" },
+    { label: "Last Month-to-Date", value: "lastmonth-to-date" },
+    { label: "This Quarter", value: "thisquarter" },
+    // { label: "This Quarter-to-Date", value: "thisquarter-to-date" },
+    // { label: "Last Quarter", value: "lastquater" },
+    // { label: "Last Quarter-to-Date", value: "lastquarter-to-date" },
+    // { label: "This Year", value: "thisyear" },
+    // { label: "This Year-to-Date", value: "thisyear-to-date" },
+    // { label: "Last Year", value: "lastyear" },
+    // { label: "Last Year-to-Date", value: "lastyear-to-date" },
+  ];
+
+  for (const range of ranges) {
+    const option = document.createElement("option");
+    option.text = range.label;
+    option.value = range.value;
+    select.appendChild(option);
+  }
+
+  // Add an event listener to the dropdown
+  select.addEventListener("change", function() {
+    const selectedValue = select.value;
+    if (selectedValue !== "") {
+      // Get the date range based on the selected value
+      const dateRange = getRangeDates(selectedValue);
+      console.log("Selected Value:", selectedValue);
+      console.log("Start Date:", dateRange.start.format());
+      console.log("End Date:", dateRange.end.format());
+    }
+  });
+}
+
+function getRangeDates(range) {
+  const now = moment();
+  console.log(now)
+  switch (range) {
+    case 'today':
+      return {
+        start: now.startOf('day'),
+        end: now.endOf('day')
+      };
+    case 'yesterday':
+      const yesterday = now.clone().subtract(1, 'days');
+      return {
+        start: yesterday.startOf('day'),
+        end: yesterday.endOf('day')
+      };
+      case 'thisweek':
+      const startOfWeek = now.clone().startOf('week').day(0);
+      return {
+        start: startOfWeek,
+        end: now
+      };
+      case 'thisweek-to-date':
+      const thisWeek = now.clone().startOf('week').day(0);
+      return {
+        start: thisWeek,
+        end: now
+      };
+      case 'lastweek':
+      const lastSunday = now.clone().subtract(1, 'weeks').startOf('week').day(0);
+      const lastSaturday = now.clone().subtract(1, 'weeks').endOf('week').day(6);
+      return {
+        start: lastSunday,
+        end: lastSaturday
+      };
+      case 'lastweek-to-date':
+      const lastweektodate = now.clone().subtract(1, 'weeks').startOf('week').day(0);
+      return {
+        start: lastweektodate,
+        end: now
+      };
+      case 'thismonth':
+      const thisMonthStart = now.clone().startOf('month');
+      return {
+        start: thisMonthStart,
+        end: now.clone().endOf('month')
+      };
+      case 'thismonth-to-date':
+      const thisMonthtodate = now.clone().startOf('month');
+      return {
+        start: thisMonthtodate,
+        end: now
+      };
+      case 'lastmonth':
+      const startOfLastMonth = now.clone().subtract(1, 'months').startOf('month');
+      const endOfLastMonth = now.clone().subtract(1, 'months').endOf('month');
+      return {
+        start: startOfLastMonth,
+        end: endOfLastMonth
+      };
+      case 'lastmonth-to-date':
+      const lastmonthtodate = now.clone().subtract(1, 'months').startOf('month');
+      return {
+        start: lastmonthtodate,
+        end: now
+      };
+      case 'thisquarter':
+      const startOfThisYear = now.clone().startOf('year');
+      const endOfThisQuarter = startOfThisYear.clone().add(3, 'months').subtract(1, 'day');
+      return {
+        start: startOfThisYear,
+        end: endOfThisQuarter
+      };
+      // case 'lastmonth-to-date':
+      // const lastmonthtotrtyrydate = now.clone().subtract(1, 'months').startOf('month');
+      // return {
+      //   start: lastmonthtodate,
+      //   end: now
+      // };
+
+      
+    default:
+      throw new Error('Invalid range specified');
+  }
+}
+
+// Call the function to populate the dropdown
+populateRangeVT();
+
+
+ // Initialize datepicker for the "From" input
+ $(function() {
+    // Initialize date picker for the "From" date with year dropdown
+    $("#datepickerFrom").datepicker({
+      changeMonth: true,
+      changeYear: true,
+      beforeShow: function(input, inst) {
+        // Close previous alerts
+        $(".ui-datepicker-alert").remove();
+      }
+    });
+
+    // Initialize date picker for the "To" date with year dropdown
+    $("#datepickerTo").datepicker({
+      changeMonth: true,
+      changeYear: true,
+      beforeShow: function(input, inst) {
+        // Close previous alerts
+        $(".ui-datepicker-alert").remove();
+      }
+
+    });
+
+    $("#getDateButton").on("click", function() {
+      var fromDate = $("#datepickerFrom").datepicker("getDate");
+      var toDate = $("#datepickerTo").datepicker("getDate");
+
+      if (fromDate && toDate) {
+        console.log("From Date: " + $.datepicker.formatDate("yy-mm-dd", fromDate));
+        console.log("To Date: " + $.datepicker.formatDate("yy-mm-dd", toDate));
+      } else {
+        alert("Please select both From and To dates.");
+      }
+    });
+  });
+  // });
+    
+  // });
+
+
+
+
+  </script>
+</body>
+</html>
