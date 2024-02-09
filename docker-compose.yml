@@ -10,6 +10,8 @@ services:
       - "8080:8080"
     links:
       - db
+    depends_on:
+      - libreoffice
 
   db:
     image: mongo:latest
@@ -20,5 +22,10 @@ services:
       - D:\Jayaram\python\strApp\volumes:/data/db
     ports:
       - "27017:27017"
+  
+  libreoffice:
+    image: libreoffice/online
+    ports:
+      - "9980:9980"
 volumes:
   static_volume: {}
