@@ -84,6 +84,12 @@ async def get_week_data(data: Dict[str, str] = Body(...)):
             "occupancy": "occupancy_ss_ranks",
             "revpar": "revpar_ss_ranks",
         }
+        metadata_labels = {
+            "adr":["ADR","Index (ARI)"],
+            "occupancy":["Occ (%)","Index (MPI)"],
+            "revpar":["RevPAR","Index (RGI)"]
+        }
+        
 
         result = {}
 
@@ -98,73 +104,97 @@ async def get_week_data(data: Dict[str, str] = Body(...)):
                             "$lte": datetime.fromisoformat(end_date),
                         },
                         "metadata.str_id": ObjectId(str_id_objId),
+                        "change":{"$ne":0}
                     }
                 },
-                {"$sort": {"timestamp": 1}},
+                # {
+                #     "$project":{
+                #         "_id":0,
+                #         "timestamp": "$timestamp",
+                #         "label":"$metadata.label",
+                #         "change":"$change"
+                #     }
+                # }
                 {
-                    "$lookup": {
-                        "from": lookup_collection,
-                        "localField": "timestamp",
-                        "foreignField": "timestamp",
-                        "as": "rank_data",
+                    "$group":{
+                        "_id":{
+                            "timestamp":"$timestamp",
+                            "label":"$metadata.label"
+                        },
+                        "change":{"$first":"$change"}
                     }
                 },
-                {"$unwind": {"path": "$rank_data", "preserveNullAndEmptyArrays": True}},
+                {
+                    "$project":{
+                        "_id":0,
+                        "timestamp": "$_id.timestamp",
+                        "label":"$_id.label",
+                        "change":"$change"
+                    }
+                },{"$sort":{"timestamp":1}}
+            ]
+            pipeline1 = [
                 {
                     "$match": {
-                        "$or": [
-                            {"rank_data.metadata.label": "Your rank"},
-                            {"rank_data": {"$exists": False}},  
-                        ]
+                        "timestamp": {
+                            "$gte": datetime.fromisoformat(start_date),
+                            "$lte": datetime.fromisoformat(end_date),
+                        },
+                        "metadata.str_id": ObjectId(str_id_objId),
+                        "metadata.label":"Your rank",
+                        
                     }
                 },
                 {
-                    "$group": {
-                        "_id": "$timestamp",
-                        "rank": {
-                            "$first": {
-                                "$concat": [
-                                    {
-                                        "$toString": {
-                                            "$arrayElemAt": ["$rank_data.rank", 0]
-                                        }
-                                    },
-                                    " of ",
-                                    {
-                                        "$toString": {
-                                            "$arrayElemAt": ["$rank_data.rank", 1]
-                                        }
-                                    },
-                                ]
-                            }
+                    "$project":{
+                        "_id":0,
+                        "timestamp": "$timestamp",
+                        "label":"$metadata.label",
+                        "rank":"$rank",
+                        "avg_type": {
+                                        "$cond": {
+                                            "if": { "$eq": ["$avg_type",None] },
+                                            "then": "$$REMOVE",
+                                            "else": "$avg_type"
+                                            }
+                                    }
+                    }
+                }
+            ]
+            pipeline2 = [
+                {
+                    "$match":{
+                        "timestamp":{
+                            "$gte":datetime.fromisoformat(start_date),
+                            "$lte":datetime.fromisoformat(end_date)  
                         },
-                        "data": {
-                            "$push": {
-                                "label": "$metadata.label",
-                                 "change": {
-                                                "$cond": {
-                                                    "if": {
-                                                        "$and": [
-                                                            {"$ne": ["$change", ""]},  
-                                                            {"$gt": [{"$toDouble": "$change"}, 0]}  
-                                                        ]
-                                                    },
-                                                    "then": {"$round": [{"$toDouble": "$change"}, 2]},
-                                                    "else": "$change"  
-                                                }
-                                            },
-                                "change_rate": "$change_rate",
-                            }
-                        },
+                        "metadata.str_id": ObjectId(str_id_objId),
+                        "metadata.label":{"$in":metadata_labels[collection_name]},
+                        "sub_label":{"$in":["My Property","Comp Set"]}
                     }
                 },
-                {"$project": {"_id": 0, "timestamp": "$_id", "rank": 1, "data": 1}},
-                {"$sort": {"timestamp": 1}},
+                {
+                    
+                    "$project":{
+                        "_id":0,
+                        "timestamp":"$timestamp",
+                        "labels":"$metadata.label",
+                        "sub_labels":"$sub_label",
+                        "avg_type":"$avg_type",
+                        "average":"$average"
+
+                    }
+                }
             ]
 
             collection = db[collection_name]
-
+            ranks_collection = db[lookup_collection]
+            coll_name = collection_name+"_ss"
+            ss_collection = db[coll_name]
+            
             result.update({collection_name: list(collection.aggregate(pipeline))})
+            result[collection_name].append({"ranks":list(ranks_collection.aggregate(pipeline1))})
+            result[collection_name].append({"week_average":list(ss_collection.aggregate(pipeline2))})
 
         # print(result)
 

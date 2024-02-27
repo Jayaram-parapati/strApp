@@ -23,9 +23,9 @@ weekdays = [
     "Friday",
     "Saturday",
 ]
-
-# mongoc = MongoClient("mongodb://localhost:27017")
-mongoc = MongoClient("mongodb://mongodbserver:27017")
+week_range = []
+mongoc = MongoClient("mongodb://localhost:27017")
+# mongoc = MongoClient("mongodb://mongodbserver:27017")
 db = mongoc["str7"]
 
 # file = "04.04.2023"
@@ -213,6 +213,7 @@ def prepare_other_sheet(dfo, collection_name, str_id):
         if label_name != "Rank":
             df_date = df.iloc[:2, :-4]
             df_sms = df.iloc[-1:, :-4]
+            df_weeklyavg = df.iloc[:,[0,-3,-2,-1]]
             # print(label_name)
             if df_date.shape[1] == df_sms.shape[1]:
                 #! save to db
@@ -234,13 +235,34 @@ def prepare_other_sheet(dfo, collection_name, str_id):
                     except Exception as e:
                         print(e)
 
-                #! save last columns to db
+                #! save last     to db
                 edf = df.iloc[:5, [0, -4]]
                 edf.columns = [0, 1]
                 if collection_name in extra_dfs:
                     extra_dfs[collection_name].append(edf)
                 else:
                     extra_dfs[collection_name] = [edf]
+            # saving weekly avgs 
+            for r in range(2,df_weeklyavg.shape[0]):
+                for c in range(1,df_weeklyavg.shape[1]): 
+                    df_weeklyavg.columns = range(df_weeklyavg.columns.size)
+                    df = df_weeklyavg
+                    avg_type = str(df.iloc[0,c])+" "+str(df.iloc[1,c])
+                    sub_label = df.iloc[r,0]
+                    avg = df.iloc[r,c]
+                    record = {
+                        "metadata": {"label": label_name, "str_id": str_id},
+                        "timestamp": week_range[0],
+                        "avg_type":avg_type,
+                        "sub_label":sub_label,
+                        "average":avg
+                    }
+                    try:
+                        if config["save_to_db"] == True:
+                            db[collection_name].insert_one(record)
+                    except Exception as e:
+                        print(e)
+                
         else:  # todo save ranks to db
             if (
                 f"{collection_name}_ranks" not in db.list_collection_names()
@@ -252,6 +274,8 @@ def prepare_other_sheet(dfo, collection_name, str_id):
                     timeseries={"timeField": "timestamp", "metaField": "metadata"},
                 )
             ranks_df = df.iloc[:, :-3]
+            df_weekly_rank_avg = df.iloc[:,[0,-3,-2,-1]]
+
             # print(ranks_df)
             myrank_label = ranks_df.iloc[2, 0]
             typerank_label = ranks_df.iloc[3, 0]
@@ -276,7 +300,7 @@ def prepare_other_sheet(dfo, collection_name, str_id):
                     "rank": [int(myrank[0]),int(myrank[1])],
                 }
                 record2 = {
-                    "metadata": {"label": typerank_label},
+                    "metadata": {"label": typerank_label,"str_id": str_id},
                     "timestamp": dateobj,
                     "rank": [int(typerank[0]),int(typerank[1])],
                 }
@@ -287,7 +311,41 @@ def prepare_other_sheet(dfo, collection_name, str_id):
                         db[f"{collection_name}_ranks"].insert_one(record2)
                 except Exception as e:
                     print(e)
-
+            #saving weekly rank avgs
+            for c in range(1, df_weekly_rank_avg.shape[1]):
+                df_weekly_rank_avg.columns = range(df_weekly_rank_avg.columns.size)
+                df = df_weekly_rank_avg
+                avg_type = str(df.iloc[0,c])+" "+str(df.iloc[1,c]) 
+                myrankvalue = df_weekly_rank_avg.iloc[2, c]
+                if not pd.isna(myrankvalue):
+                    myrank = myrankvalue.split("of")
+                else:myrank = [0,0]    
+                
+                typerankValue = df_weekly_rank_avg.iloc[3,c]
+                if not pd.isna(typerankValue):
+                    typerank = typerankValue.split("of")
+                else:typerank = [0,0]    
+                # if pd.isnull(myrank) or pd.isnull(typerank):
+                #     print("alas! need recalibrations")
+                record1 = {
+                    "metadata": {"label": myrank_label, "str_id": str_id},
+                    "timestamp": week_range[0],
+                    "rank": [int(myrank[0]),int(myrank[1])],
+                    "avg_type":avg_type
+                }
+                record2 = {
+                    "metadata": {"label": typerank_label,"str_id": str_id},
+                    "timestamp": week_range[0],
+                    "rank": [int(typerank[0]),int(typerank[1])],
+                    "avg_type":avg_type
+                }
+                # print(record1, record2)
+                try:
+                    if config["save_to_db"] == True:
+                        db[f"{collection_name}_ranks"].insert_one(record1)
+                        db[f"{collection_name}_ranks"].insert_one(record2)
+                except Exception as e:
+                    print(e)
 
 def prepare_daily_sheet(dfo, str_id):
     global year
@@ -368,14 +426,13 @@ def prepare_daily_sheet(dfo, str_id):
                     # print(record)
                     try:
                         if config["save_to_db"] == True:
-                            ts = record["timestamp"]
-                            ts_obj = datetime(ts.year, ts.month, ts.day, ts.hour, ts.minute, ts.second)
-                            q = {"timestamp":{"$eq":ts_obj},"metadata.str_id":str_id,"metadata.label":label_name}
-                            match_obj = db[collection_name].find_one(q)
-                            if match_obj:
-                                db[collection_name].delete_one({"_id":match_obj["_id"]}) 
-                                db[collection_name].insert_one(record)
-                            else:db[collection_name].insert_one(record)                           
+                            if record["change"] != 0:
+                                ts = record["timestamp"]
+                                ts_obj = datetime(ts.year, ts.month, ts.day, ts.hour, ts.minute, ts.second)
+                                q = {"timestamp":{"$eq":ts_obj},"metadata.str_id":str_id,"metadata.label":label_name}
+                                match_obj = db[collection_name].find_one(q)
+                                if not match_obj:
+                                    db[collection_name].insert_one(record)                           
                     except Exception as e:
                         print(e)
 
@@ -458,6 +515,7 @@ def process_extra_dfs(collection_name, str_id):
 def prepare_toc_sheet(dfo):
     # print(dfo)
     global year
+    global week_range
     collection_name = "str_reports"
     df = dfo["df"]
 
@@ -476,6 +534,7 @@ def prepare_toc_sheet(dfo):
     strinfo["str_property"] = prop[1].strip()
     strinfo["str_date_range"] = drange
     year = drange[0].year
+    week_range = drange
     if (
         collection_name not in db.list_collection_names()
         and config["save_to_db"] == True
@@ -522,48 +581,5 @@ def prepare_all_dfs(sheets,xl):
 
 # prepare_all_dfs()
 
-# filename = f"D:\Jayaram\python\strApp\str reports\STR Sample Data\Weekly\Weekly STAR for Sunday Apr 2, 2023 to Saturday Apr 8, 2023 (Part 1)(1)\EENKE-20230402-USD-E.xlsx"
-# # Get meta information
-# xl = pd.ExcelFile(filename)
-# sheets = xl.sheet_names
-
-# prepare_all_dfs(sheets,xl,filename)
-
-# xlsx upload => pdf => preview
-#             => s3  => s3key => nimble api
-#             => prepare_all_dfs() => mongodb => queries => preview
-#
-# reports => weekly,  monthly, daily... filter/btns => queries => report
-
-
-
-
-
-
-
-
-
-# # Define the directory path
-# directory = r"D:\Jayaram\python\strApp\str reports\STR Sample Data\Weekly"
-# sheetslist = []
-# #Iterate over each folder and each file in the directory structure
-# for root, dirs, files in os.walk(directory):
-#     for file in files:
-#         # Check if the file is an Excel file
-#         if file.endswith(".xlsx") or file.endswith(".xls"):
-#             # Construct the full path to the file
-#             file_path = os.path.join(root, file)
-#             xl = pd.ExcelFile(file_path)
-#             sheets = xl.sheet_names
-#             res = prepare_all_dfs(sheets,xl,file_path)
-#             print(res)
-
-#             # Read the Excel file using pandas
-#             # df = pd.read_excel(file_path)
-            
-#             # Now you can process the dataframe 'df' as needed
-#             # For example, you can print the first few rows:
-#             # print(f"File: {file_path}")
-#             # print(df.head())
 
 

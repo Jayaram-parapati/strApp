@@ -239,8 +239,12 @@
 
         <div class="corparation">
           <label for="corporation_label"
-            >Corporation Label: <em style="color: red">*</em></label>
-          <select class="form-select form-select-sm mb-5" id="corporationDropdown">
+            >Corporation Label: <em style="color: red">*</em></label
+          >
+          <select
+            class="form-select form-select-sm mb-5"
+            id="corporationDropdown"
+          >
             <option selected>-select-</option>
           </select>
         </div>
@@ -372,57 +376,80 @@
     <!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script> -->
 
     <script>
+      var strID = null;
+      let dataSet = {
+        week_start_date: "",
+        week_end_date: "",
+        str_id: " ",
+      };
+      function populateDropdown() {
+        var dropdown = document.getElementById("corporationDropdown");
+        dropdown.innerHTML = "<option selected>-select-</option>";
 
-     
-
-    var strID = null;
-    let dataSet = {
-      week_start_date: "",
-      week_end_date: "",
-      str_id: " "
-    };
-    function populateDropdown() {
-    var dropdown = document.getElementById('corporationDropdown');
-    dropdown.innerHTML = '<option selected>-select-</option>';
-
-    fetch("/getcorporationLabels")
-        .then((rawResponse) => rawResponse.json())
-        .then((content) => {
-            console.log(content);
-            content.forEach(item => {
-                var option = new Option(item.property_label, item.str_id);
-                dropdown.add(option);
+        fetch("/getcorporationLabels")
+          .then((rawResponse) => rawResponse.json())
+          .then((content) => {
+            content.forEach((item) => {
+              var option = new Option(item.property_label, item.str_id);
+              dropdown.add(option);
             });
-            dropdown.addEventListener('change', () => {
-              let selectedValue = dropdown.value;
-                strID = selectedValue;
-                dataSet.str_id = selectedValue
-                console.log('Selected strID:', strID);
+            dropdown.addEventListener("change", () => {
+              // strID = dropdown.value;
+              var selectedValue = dropdown.value;
+              strID = selectedValue;
+              dataSet.str_id = selectedValue;
             });
-        });
-}
- populateDropdown();
-
+          });
+      }
+      populateDropdown();
 
       // Navbar onchange
+      // $("#strImportLink").click(function (e) {
+      //   e.preventDefault(); // Prevent the default link behavior
+
+      //   $("#dashboardContent").hide();
+      //   $("#importContent").load($(this).attr("href"), function () {
+      //     $("#importContent").show();
+
+      //   }
+      //   );
+      // });
+
+      var clickCount = 0;
+
       $("#strImportLink").click(function (e) {
         e.preventDefault(); // Prevent the default link behavior
 
+        // Increment the click count
+        clickCount++;
+
         $("#dashboardContent").hide();
-        $("#importContent").load($(this).attr("href"), function () {
-          $("#importContent").show();
-          
+
+        // Reload content only if it's the first click or an odd-numbered click
+        if (clickCount === 1 || clickCount % 2 !== 0) {
+          $("#importContent").load($(this).attr("href"), function () {
+            $("#importContent").show();
+          });
         }
-        );
+        // Clear the click count after every even-numbered click
+        if (clickCount % 2 === 0) {
+          clickCount = 0;
+        }
       });
+
       // Handle click event for "STR Dashboard" link
       $("#dashboardLink").click(function () {
-        
         $("#dashboardContent").show();
         $("#importContent").hide();
       });
 
-     
+      // let dataSet = {
+      //   week_start_date: "",
+      //   week_end_date: "",
+      //   // str_id: strID,
+
+      //   str_id: "38865",
+      // };
 
       //INTTIAL DOM RENDER
       $(document).ready(function () {
@@ -613,7 +640,7 @@
       //DROPDOWN ONCHANGE FUNCTIONS
       let selectedYear;
       function handleYearDropdownChange() {
-        // strID
+        strID;
         $("#tables-container").empty();
         let tabId = this.id.split("_")[1];
         // console.log(tabId);
@@ -650,7 +677,6 @@
           str_id: strID,
         };
 
-        console.log("data##",data)
 
         let weekException = weeksBetweenDates(date_array[0], dataSet.enddate);
 
@@ -724,15 +750,6 @@
 
       // DropDowns
       function populateYearDropdown(tab) {
-        // let yearDropdown = document.getElementById(`year_${tab}`);
-        // let currentYear = new Date().getFullYear();
-        // for (let i = currentYear; i >= currentYear - 10; i--) {
-        //   const option = document.createElement("option");
-        //   option.value = i;
-        //   option.text = i;
-        //   yearDropdown.appendChild(option);
-        // }
-
         let yearDropdown = document.getElementById(`year_${tab}`);
         if (yearDropdown) {
           let currentYear = new Date().getFullYear();
@@ -750,7 +767,9 @@
 
       function populateWeekDropdown(tab, dateRanges) {
         let weeksDropdown = document.getElementById(`weekFrom_${tab}`);
+        // console.log("weeksDropdown:", weeksDropdown);
         let weeksToDropdown = document.getElementById(`WeekTo_${tab}`);
+        // console.log("weeksToDropdown:", weeksToDropdown);
         // weeksToDropdown.innerHTML = "";
         weeksDropdown.innerHTML = "";
         // weeksToDropdown.innerHTML = "";
@@ -765,8 +784,7 @@
           );
           if (quarters[currentQuarter].length === 13 && currentQuarter < 3) {
             currentQuarter++;
-          } 
-          else if (index === dateRanges.length - 1 && currentQuarter < 3 ) {
+          } else if (index === dateRanges.length - 1 && currentQuarter < 3) {
             quarters[3].push(
               "Week  " + weekNumber + ":" + " " + " " + dateRange
             );
@@ -869,62 +887,61 @@
               // if (tabId == "#tab3") {
               //   renderMonthTables(content, tabId);
               // } else {
-                for (var tableName in content) {
-                  let labels = ["My Property", "Comp Set"];
+              for (var tableName in content) {
+                let labels = ["My Property", "Comp Set"];
 
-                  if (tableName == "adr") {
-                    labels.push("Index (ARI)");
-                  }
-                  if (tableName == "occupancy") {
-                    labels.push("Index (MPI)");
-                  }
-                  if (tableName == "revpar") {
-                    labels.push("Index (RGI)");
-                  }
+                if (tableName == "adr") {
+                  labels.push("Index (ARI)");
+                }
+                if (tableName == "occupancy") {
+                  labels.push("Index (MPI)");
+                }
+                if (tableName == "revpar") {
+                  labels.push("Index (RGI)");
+                }
 
-                  if (content.hasOwnProperty(tableName)) {
-                    if (tabId == "#tab1") {
-                      renderWeekTable(
-                        tableName,
-                        content[tableName],
-                        tabId,
-                        labels
-                      );
-                      console.log(content);
-                    } else if (tabId == "#tab2") {
-                      renderWeeklyTable(
-                        tableName,
-                        content[tableName],
-                        tabId,
-                        labels
-                      );
-                    } else if (tabId == "#tab4") {
-                      renderMonthlyTable(
-                        tableName,
-                        content[tableName],
-                        tabId,
-                        labels
-                      );
-                    } else if (tabId == "#tab5") {
-                      renderyearlyTable(
-                        tableName,
-                        content[tableName],
-                        tabId,
-                        labels
-                      );
+                if (content.hasOwnProperty(tableName)) {
+                  if (tabId == "#tab1") {
+                    renderWeekTable(
+                      tableName,
+                      content[tableName],
+                      tabId,
+                      labels
+                    );
+                    // console.log(content);
+                  } else if (tabId == "#tab2") {
+                    renderWeeklyTable(
+                      tableName,
+                      content[tableName],
+                      tabId,
+                      labels
+                    );
+                  } else if (tabId == "#tab4") {
+                    renderMonthlyTable(
+                      tableName,
+                      content[tableName],
+                      tabId,
+                      labels
+                    );
+                  } else if (tabId == "#tab5") {
+                    renderyearlyTable(
+                      tableName,
+                      content[tableName],
+                      tabId,
+                      labels
+                    );
+                  } else if (tabId == "#tab3") {
+                    if (cts < 1) {
+                      renderMonthTable(content);
                     }
-                    else if (tabId == "#tab3") {
-                      if (cts < 1) {
-                        renderMonthTable(content);
-                      }
 
-                      cts += 1;
-                    }
+                    cts += 1;
                   }
+                }
                 // }
               }
             });
-            console.log(content);
+            console.log("content:", content);
           })
 
           .catch((error) => {
@@ -932,45 +949,20 @@
           });
       }
 
-      // function renderMonthTables(data, tabId) {
-      //   let mainheads = Object.keys(Object.values(Object.values(data)[0])[0]); //["adr", "occupancy","revpar"]
-      //   let subheads = Object.keys(data);
-
-      //   let labels = ["My Property", "Comp Set", "Index"];
-
-      //   var columns = [];
-
-      //   Object.values(data).forEach((i) => {
-      //     let eachCol = [];
-      //     Object.keys(i).forEach((t) => {
-      //       eachCol.push({title:'', title: t });
-      //     });
-      //     columns.push(eachCol);
-      //   });
-
-      //   console.log(columns);
-
-      //   let multiTables = [];
-
-      //   mainheads.forEach((i) => {
-      //     columns.forEach((t) =>
-      //       multiTables.push(renderDataTable(i, tabId, t))
-      //     );
-      //   });
-
-      // }
+      
 
       //RENDERS TABLES
-      function renderWeekTable(tableName, tableData, tabId, labels) {
-        // console.log("name -----", tableName);
-        // console.log("data -----", tableData);
-        const timestamps = [
-          ...new Set(tableData.map((item) => item.timestamp)),
-        ];
-        // console.log(timestamps);
+     
 
-        const ranks = tableData.map((item) => item.rank);
-        // console.log("res", ranks);
+      function renderWeekTable(tableNames, tableData, tabId, labels) {
+
+        const timestamps = [];
+        tableData.forEach((item) => {
+          const itemTimeStamp = item.timestamp;
+          if (itemTimeStamp !== undefined) {
+            timestamps.push(itemTimeStamp);
+          }
+        });
 
         const desiredOrder = [
           "Sunday",
@@ -980,6 +972,9 @@
           "Thursday",
           "Friday",
           "Saturday",
+          "Current Week",
+          "Run 28",
+          "Run MTD",
         ];
 
         timestamps.sort((a, b) => {
@@ -994,45 +989,87 @@
 
         var columns = [
           { title: "Label" },
-          ...desiredOrder.map((timestamp) => ({ title: timestamp })),
+          ...desiredOrder.map((headers) => ({ title: headers })),
         ];
+        const dataTable = renderDataTable(tableNames, tabId, columns);
+        const rankRow = ["Ranks"];
+        Object.values(tableData).forEach((i) => {
+          if (i && i.ranks) {
+            let rank_item = i.ranks;
+            rank_item.forEach((r) => {
+              if ((i.timestamp === r.timestamp) !== undefined) {
+                rankRow.push(r.rank);
+              } else {
+                rankRow.push(" ");
+              }
+            });
+          }
+        });
 
-        // let isFirstTable = "nabi"
-        const dataTable = renderDataTable(tableName, tabId, columns);
-        const rankData = ["Rank"];
+
         labels.forEach((label) => {
           const rowData = [label];
-          desiredOrder.forEach((timestamp) => {
-            const dataPoint = tableData.find(
-              (item) =>
-                item.timestamp ===
-                timestamps.find((ts) => moment(ts).format("dddd") === timestamp)
-            );
-            // console.log(dataPoint);
+          desiredOrder.map((tsp) => {
+            let dataPoints = [];
+            
 
-            if (dataPoint) {
-              const rank = dataPoint.rank;
-              rankData.push(rank);
-              const { change, change_rate } = dataPoint.data.find(
-                (dp) => dp.label === label
-              );
-              rowData.push(change ? change : " ");
-            } else {
-              rowData.push(" ");
-              rankData.push(" ");
-            }
+            tableData.forEach((item) => {
+              let matchedItem = timestamps.some((ts) =>moment(ts).format("dddd") === tsp && item.timestamp === ts);
+              if (matchedItem) {
+                dataPoints.push(item);
+                
+              }
+              if (item.week_average && Array.isArray(item.week_average)) {
+                let averages = item.week_average;
+                averages.forEach((obj) => {
+                  dataPoints.push(obj);
+                });
+              } 
+
+              // if (item.week_average && Array.isArray(item.week_average)) {
+                
+              //   let averages = item.week_average;
+              //   averages.forEach((i) => {
+              //     let matched_average = averages.some((vg)=>{ vg.sub_labels === label || vg.labels === label 
+              //     })
+              //     if(matched_average === false){
+              //         dataPoints.push(i);
+              //       }
+                  
+              //   });
+
+              //  
+              // } 
+            
+            });
+
+
+
+           
+            
+            dataPoints.forEach((dataPoint) => {
+              if (dataPoint.label === label) {
+                const change = dataPoint.change;
+                rowData.push(change ? change : " ");
+              }
+              if(dataPoint.sub_labels === label && dataPoint.avg_type === tsp){
+                const value = dataPoint.average
+                rowData.push(value ? value : " ")
+              }
+              if(dataPoint.labels === label && dataPoint.avg_type === tsp){
+                const value = dataPoint.average
+                rowData.push(value? value : " ")
+              }
+            });
           });
           dataTable.row.add(rowData);
         });
-
-        //Fix this Rank
-
-        // const rankRowData = ["Rank", ...ranks.map(String)];
-        // console.log("rank", rankRowData)
-        dataTable.row.add(rankData);
+        dataTable.row.add(rankRow);
 
         dataTable.draw();
       }
+
+      
 
       function renderWeeklyTable(tableName, tableData, tabId, labels) {
         let weeks = [];
@@ -1839,8 +1876,6 @@
           $("<td>").text(isFirstTable).appendTo(dropdownRow);
         }
 
-        // $("<h3>").text(`${tableName}:`).appendTo(containerDiv);
-        // $("<h3>").text(`${tableName.charAt(0).toUpperCase() + tableName.slice(1)}`).appendTo(containerDiv);
         $("<h4>")
           .text(`${tableName.charAt(0).toUpperCase() + tableName.slice(1)}`)
           .css({
